@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    container_name: task_manager_mongodb
+    restart: always
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: task_manager
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - task_manager_network
+
+  # NestJS Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: task_manager_backend
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/task_manager?authSource=admin
+      - JWT_SECRET=your_super_secret_jwt_key_change_in_production_2024
+      - JWT_EXPIRATION=15m
+      - JWT_REFRESH_SECRET=your_super_secret_refresh_key_change_in_production_2024
+      - JWT_REFRESH_EXPIRATION=7d
+    depends_on:
+      - mongodb
+    networks:
+      - task_manager_network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  task_manager_network:
+    driver: bridge
