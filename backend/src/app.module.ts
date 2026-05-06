@@ -8,6 +8,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { CommentsModule } from './comments/comments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -16,6 +17,8 @@ import { FirebaseModule } from './firebase/firebase.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    
+    ScheduleModule.forRoot(),
 
     // MongoDB
     MongooseModule.forRootAsync({

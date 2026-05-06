@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsEnum, IsDateString, IsArray, IsMongoId } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsEnum, IsDateString, IsArray, IsMongoId, IsInt, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskStatus, TaskPriority } from '../schemas/task.schema';
 
@@ -36,7 +36,13 @@ export class CreateTaskDto {
   @ApiPropertyOptional({ example: '2024-12-31T23:59:59.000Z' })
   @IsOptional()
   @IsDateString()
-  dueDate?: string;
+  scheduledAt?: string;
+
+  @ApiPropertyOptional({ example: 30, description: 'Minutes before scheduledAt to send reminder' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  reminderBeforeMinutes?: number;
 
   @ApiPropertyOptional({ example: ['frontend', 'ui'] })
   @IsOptional()
@@ -79,7 +85,13 @@ export class UpdateTaskDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
-  dueDate?: string;
+  scheduledAt?: string;
+
+  @ApiPropertyOptional({ description: 'Minutes before scheduledAt to send reminder' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  reminderBeforeMinutes?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -49,7 +49,19 @@ export class Task {
 
   @ApiProperty()
   @Prop()
-  dueDate: Date;
+  scheduledAt: Date;
+
+  @ApiProperty()
+  @Prop({ default: 0, min: 0 })
+  reminderBeforeMinutes: number;
+
+  @ApiProperty()
+  @Prop()
+  remindAt: Date;
+
+  @ApiProperty()
+  @Prop({ default: false })
+  reminderSent: boolean;
 
   @ApiProperty()
   @Prop({ type: [String], default: [] })

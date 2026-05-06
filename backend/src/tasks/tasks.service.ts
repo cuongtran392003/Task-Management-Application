@@ -1,23 +1,34 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Task, TaskDocument, TaskStatus } from './schemas/task.schema';
 import { CreateTaskDto, UpdateTaskDto, QueryTaskDto } from './dto/task.dto';
 import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
-export class TasksService {
+export class TasksService implements OnModuleInit {
+  private readonly logger = new Logger(TasksService.name);
   constructor(
     @InjectModel(Task.name) private taskModel: Model<TaskDocument>,
     private firebaseService: FirebaseService,
   ) {}
 
+  async onModuleInit() {
+    await this.migrateLegacyTasks();
+  }
+
   async create(
     createTaskDto: CreateTaskDto,
     userId: string,
   ): Promise<TaskDocument> {
+    const reminderFields = this.buildReminderFields(
+      createTaskDto.scheduledAt,
+      createTaskDto.reminderBeforeMinutes,
+    );
     const task = new this.taskModel({
       ...createTaskDto,
+      ...reminderFields,
       project: new Types.ObjectId(createTaskDto.project),
       assignee: createTaskDto.assignee
         ? new Types.ObjectId(createTaskDto.assignee)
@@ -29,15 +40,6 @@ export class TasksService {
       { path: 'createdBy', select: '-password' },
       { path: 'project' },
     ]);
-
-    if (saved.assignee && (saved.assignee as any).fcmTokens?.length > 0 && (saved.assignee as any)._id.toString() !== userId) {
-      this.firebaseService.sendPushNotification(
-        (saved.assignee as any).fcmTokens,
-        'New Task Assigned',
-        `You have been assigned to: ${saved.title}`,
-        { taskId: saved.id },
-      );
-    }
 
     return saved;
   }
@@ -109,6 +111,21 @@ export class TasksService {
     }
     if (updateTaskDto.project) {
       updateData.project = new Types.ObjectId(updateTaskDto.project);
+    }
+
+    if (updateTaskDto.scheduledAt || updateTaskDto.reminderBeforeMinutes !== undefined) {
+      const existingTask = await this.taskModel.findById(id).exec();
+      if (!existingTask) {
+        throw new NotFoundException('Task not found');
+      }
+
+      const scheduledAt = updateTaskDto.scheduledAt ?? existingTask.scheduledAt;
+      const reminderBeforeMinutes =
+        updateTaskDto.reminderBeforeMinutes ?? existingTask.reminderBeforeMinutes ?? 0;
+      const reminderFields = this.buildReminderFields(scheduledAt, reminderBeforeMinutes);
+      updateData.remindAt = reminderFields.remindAt;
+      updateData.reminderBeforeMinutes = reminderFields.reminderBeforeMinutes;
+      updateData.reminderSent = false;
     }
 
     const task = await this.taskModel
@@ -213,5 +230,106 @@ export class TasksService {
       .sort({ updatedAt: -1 })
       .limit(limit)
       .exec();
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleCron() {
+    const now = new Date();
+    // Find tasks that are due, not done, and reminder not sent yet
+    const dueTasks = await this.taskModel.find({
+      status: { $ne: TaskStatus.DONE },
+      reminderSent: { $ne: true },
+      $or: [
+        { $and: [{ remindAt: { $type: 'date' } }, { remindAt: { $lte: now } }] },
+        { remindAt: { $exists: false }, scheduledAt: { $lte: now } },
+        { remindAt: null, scheduledAt: { $lte: now } },
+      ],
+    }).populate('createdBy');
+
+    for (const task of dueTasks) {
+      if (!task.remindAt && task.scheduledAt) {
+        const reminderFields = this.buildReminderFields(
+          task.scheduledAt,
+          task.reminderBeforeMinutes,
+        );
+        if (reminderFields.remindAt) {
+          task.remindAt = reminderFields.remindAt;
+        }
+        task.reminderBeforeMinutes = reminderFields.reminderBeforeMinutes;
+      }
+      const creator = task.createdBy as any;
+      if (creator && creator.fcmTokens?.length > 0) {
+        await this.firebaseService.sendPushNotification(
+          creator.fcmTokens,
+          'Task Due Reminder',
+          `Your task "${task.title}" is due today!`,
+          { taskId: task.id },
+        );
+      }
+      
+      // Mark reminder as sent
+      task.reminderSent = true;
+      await task.save();
+    }
+  }
+
+  private buildReminderFields(
+    scheduledAt?: string | Date,
+    reminderBeforeMinutes?: number,
+  ): { remindAt?: Date; reminderBeforeMinutes: number } {
+    const amount = Math.max(0, reminderBeforeMinutes ?? 0);
+    if (!scheduledAt) {
+      return { remindAt: undefined, reminderBeforeMinutes: amount };
+    }
+    const parsedScheduledAt =
+      scheduledAt instanceof Date ? scheduledAt : new Date(scheduledAt);
+    if (Number.isNaN(parsedScheduledAt.getTime())) {
+      return { remindAt: undefined, reminderBeforeMinutes: amount };
+    }
+    return {
+      remindAt: new Date(parsedScheduledAt.getTime() - amount * 60 * 1000),
+      reminderBeforeMinutes: amount,
+    };
+  }
+
+  private async migrateLegacyTasks(): Promise<void> {
+    const legacyTasks = await this.taskModel
+      .find({ dueDate: { $type: 'date' } })
+      .select('_id dueDate scheduledAt reminderBeforeMinutes')
+      .exec();
+
+    if (legacyTasks.length === 0) {
+      return;
+    }
+
+    const operations = legacyTasks.map((task) => {
+      const scheduledAt = task.scheduledAt ?? (task as any).dueDate;
+      const reminderBeforeMinutes = task.reminderBeforeMinutes ?? 0;
+      const reminderFields = this.buildReminderFields(
+        scheduledAt,
+        reminderBeforeMinutes,
+      );
+
+      const setFields: Record<string, unknown> = {
+        scheduledAt,
+        reminderBeforeMinutes: reminderFields.reminderBeforeMinutes,
+      };
+      if (reminderFields.remindAt) {
+        setFields.remindAt = reminderFields.remindAt;
+      }
+
+      return {
+        updateOne: {
+          filter: { _id: task._id },
+          update: {
+            $set: setFields,
+            $unset: { dueDate: 1 },
+          },
+        },
+      };
+    });
+
+    await this.taskModel.collection.bulkWrite(operations as any);
+    this.logger.log(`Migrated ${legacyTasks.length} legacy task(s)`);
   }
 }

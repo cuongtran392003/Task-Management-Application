@@ -35,6 +35,10 @@ services:
       - JWT_EXPIRATION=15m
       - JWT_REFRESH_SECRET=your_super_secret_refresh_key_change_in_production_2024
       - JWT_REFRESH_EXPIRATION=7d
+      - FIREBASE_PROJECT_ID=agriculture-91534
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json
+    volumes:
+      - ./backend/service-account.json:/app/service-account.json:ro
     depends_on:
       - mongodb
     networks:
