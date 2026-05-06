@@ -1,8 +1,14 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../constants/api_constants.dart';
+import 'dio_client.dart';
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(ref.read(dioProvider));
+});
 
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
@@ -11,7 +17,7 @@ class NotificationService {
   NotificationService(this._dio);
 
   Future<void> initialize() async {
-    // Request permission
+    // Request Firebase permission
     NotificationSettings settings = await _fcm.requestPermission(
       alert: true,
       badge: true,
@@ -20,7 +26,7 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       debugPrint('User granted permission');
-      
+
       // Get the token
       String? token = await _fcm.getToken();
       if (token != null) {
@@ -32,8 +38,9 @@ class NotificationService {
 
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Received foreground message: ${message.notification?.title}');
-        // You can show a local notification or update UI here
+        debugPrint(
+          'Received foreground message: ${message.notification?.title}',
+        );
       });
     }
   }

@@ -90,7 +90,7 @@ class TaskModel {
   final ProjectModel? project;
   final UserModel? assignee;
   final UserModel? createdBy;
-  final DateTime? dueDate;
+  final DateTime? scheduledAt;
   final List<String> tags;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -104,7 +104,7 @@ class TaskModel {
     this.project,
     this.assignee,
     this.createdBy,
-    this.dueDate,
+    this.scheduledAt,
     this.tags = const [],
     this.createdAt,
     this.updatedAt,
@@ -126,8 +126,11 @@ class TaskModel {
       createdBy: json['createdBy'] != null && json['createdBy'] is Map
           ? UserModel.fromJson(json['createdBy'])
           : null,
-      dueDate:
-          json['dueDate'] != null ? DateTime.parse(json['dueDate']) : null,
+      scheduledAt: json['scheduledAt'] != null
+          ? DateTime.parse(json['scheduledAt'])
+          : json['dueDate'] != null
+          ? DateTime.parse(json['dueDate'])
+          : null,
       tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -139,15 +142,15 @@ class TaskModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'status': status.value,
-        'priority': priority.value,
-        if (project != null) 'project': project!.id,
-        if (assignee != null) 'assignee': assignee!.id,
-        if (dueDate != null) 'dueDate': dueDate!.toIso8601String(),
-        'tags': tags,
-      };
+    'title': title,
+    'description': description,
+    'status': status.value,
+    'priority': priority.value,
+    if (project != null) 'project': project!.id,
+    if (assignee != null) 'assignee': assignee!.id,
+    if (scheduledAt != null) 'scheduledAt': scheduledAt!.toIso8601String(),
+    'tags': tags,
+  };
 
   TaskModel copyWith({
     String? id,
@@ -158,7 +161,7 @@ class TaskModel {
     ProjectModel? project,
     UserModel? assignee,
     UserModel? createdBy,
-    DateTime? dueDate,
+    DateTime? scheduledAt,
     List<String>? tags,
   }) {
     return TaskModel(
@@ -170,7 +173,7 @@ class TaskModel {
       project: project ?? this.project,
       assignee: assignee ?? this.assignee,
       createdBy: createdBy ?? this.createdBy,
-      dueDate: dueDate ?? this.dueDate,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
       tags: tags ?? this.tags,
       createdAt: createdAt,
       updatedAt: updatedAt,

@@ -151,8 +151,16 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                                       .updateTaskStatus(tasks[index].id, s)
                                       .then((_) {
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Task status updated'), behavior: SnackBarBehavior.floating),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Task status updated',
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
                                           );
                                         }
                                       });
@@ -163,8 +171,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
                                       .deleteTask(tasks[index].id)
                                       .then((_) {
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Task deleted'), behavior: SnackBarBehavior.floating),
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Task deleted'),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
                                           );
                                         }
                                       });
@@ -235,149 +249,180 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             24,
             MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.darkBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'New Task',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'Task title',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Optional description',
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Project dropdown
-              projects.when(
-                data: (projs) => DropdownButtonFormField<String>(
-                  value: selectedProject,
-                  decoration: const InputDecoration(labelText: 'Project'),
-                  dropdownColor: AppColors.darkCard,
-                  items: projs
-                      .map(
-                        (p) =>
-                            DropdownMenuItem(value: p.id, child: Text(p.name)),
-                      )
-                      .toList(),
-                  onChanged: (v) => setModalState(() => selectedProject = v),
-                ),
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('No projects'),
-              ),
-              const SizedBox(height: 16),
-              // Priority
-              DropdownButtonFormField<String>(
-                value: selectedPriority,
-                decoration: const InputDecoration(labelText: 'Priority'),
-                dropdownColor: AppColors.darkCard,
-                items: ['low', 'medium', 'high', 'urgent']
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p,
-                        child: Text(p[0].toUpperCase() + p.substring(1)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.darkBorder,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) =>
-                    setModalState(() => selectedPriority = v ?? 'medium'),
-              ),
-              const SizedBox(height: 16),
-              // Due Date
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate ?? DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setModalState(() => selectedDate = picked);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkCard,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.darkBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, color: AppColors.textMuted, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        selectedDate != null
-                            ? '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
-                            : 'Select Due Date',
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (titleCtrl.text.isNotEmpty && selectedProject != null) {
-                      ref.read(tasksProvider.notifier).createTask({
-                        'title': titleCtrl.text,
-                        'description': descCtrl.text,
-                        'project': selectedProject,
-                        'priority': selectedPriority,
-                        if (selectedDate != null) 'dueDate': selectedDate!.toIso8601String(),
-                      }).then((_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Task created successfully'), behavior: SnackBarBehavior.floating),
-                          );
-                        }
-                      });
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  child: const Text(
-                    'Create Task',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'New Task',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'Task title',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'Optional description',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Project dropdown
+                  projects.when(
+                    data: (projs) => DropdownButtonFormField<String>(
+                      value: selectedProject,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      dropdownColor: AppColors.darkCard,
+                      items: projs
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) =>
+                          setModalState(() => selectedProject = v),
+                    ),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('No projects'),
+                  ),
+                  const SizedBox(height: 16),
+                  // Priority
+                  DropdownButtonFormField<String>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(labelText: 'Priority'),
+                    dropdownColor: AppColors.darkCard,
+                    items: ['low', 'medium', 'high', 'urgent']
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p[0].toUpperCase() + p.substring(1)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setModalState(() => selectedPriority = v ?? 'medium'),
+                  ),
+                  const SizedBox(height: 16),
+                  // Scheduled Date
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkCard,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.darkBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            color: AppColors.textMuted,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            selectedDate != null
+                                ? '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
+                                : 'Select Scheduled Date',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (titleCtrl.text.isNotEmpty &&
+                            selectedProject != null) {
+                          ref
+                              .read(tasksProvider.notifier)
+                              .createTask({
+                                'title': titleCtrl.text,
+                                'description': descCtrl.text,
+                                'project': selectedProject,
+                                'priority': selectedPriority,
+                                if (selectedDate != null)
+                                  'scheduledAt': selectedDate!
+                                      .toIso8601String(),
+                              })
+                              .then((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Task created successfully',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              });
+                          Navigator.pop(ctx);
+                        }
+                      },
+                      child: const Text(
+                        'Create Task',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -393,7 +438,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
     final descCtrl = TextEditingController(text: task.description);
     String? selectedProject = task.project?.id;
     String selectedPriority = task.priority.name;
-    DateTime? selectedDate = task.dueDate;
+    DateTime? selectedDate = task.scheduledAt;
 
     final projects = ref.read(projectsProvider);
 
@@ -412,149 +457,180 @@ class _TasksScreenState extends ConsumerState<TasksScreen>
             24,
             MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.darkBorder,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Edit Task',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'Task title',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Optional description',
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Project dropdown
-              projects.when(
-                data: (projs) => DropdownButtonFormField<String>(
-                  value: selectedProject,
-                  decoration: const InputDecoration(labelText: 'Project'),
-                  dropdownColor: AppColors.darkCard,
-                  items: projs
-                      .map(
-                        (p) =>
-                            DropdownMenuItem(value: p.id, child: Text(p.name)),
-                      )
-                      .toList(),
-                  onChanged: (v) => setModalState(() => selectedProject = v),
-                ),
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('No projects'),
-              ),
-              const SizedBox(height: 16),
-              // Priority
-              DropdownButtonFormField<String>(
-                value: selectedPriority,
-                decoration: const InputDecoration(labelText: 'Priority'),
-                dropdownColor: AppColors.darkCard,
-                items: ['low', 'medium', 'high', 'urgent']
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p,
-                        child: Text(p[0].toUpperCase() + p.substring(1)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.darkBorder,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) =>
-                    setModalState(() => selectedPriority = v ?? 'medium'),
-              ),
-              const SizedBox(height: 16),
-              // Due Date
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate ?? DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setModalState(() => selectedDate = picked);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkCard,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.darkBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, color: AppColors.textMuted, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        selectedDate != null
-                            ? '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
-                            : 'Select Due Date',
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (titleCtrl.text.isNotEmpty && selectedProject != null) {
-                      ref.read(tasksProvider.notifier).updateTask(task.id, {
-                        'title': titleCtrl.text,
-                        'description': descCtrl.text,
-                        'project': selectedProject,
-                        'priority': selectedPriority,
-                        if (selectedDate != null) 'dueDate': selectedDate!.toIso8601String(),
-                      }).then((_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Task updated successfully'), behavior: SnackBarBehavior.floating),
-                          );
-                        }
-                      });
-                      Navigator.pop(ctx);
-                    }
-                  },
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Edit Task',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'Task title',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'Optional description',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Project dropdown
+                  projects.when(
+                    data: (projs) => DropdownButtonFormField<String>(
+                      value: selectedProject,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      dropdownColor: AppColors.darkCard,
+                      items: projs
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p.id,
+                              child: Text(p.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) =>
+                          setModalState(() => selectedProject = v),
+                    ),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('No projects'),
+                  ),
+                  const SizedBox(height: 16),
+                  // Priority
+                  DropdownButtonFormField<String>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(labelText: 'Priority'),
+                    dropdownColor: AppColors.darkCard,
+                    items: ['low', 'medium', 'high', 'urgent']
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p[0].toUpperCase() + p.substring(1)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setModalState(() => selectedPriority = v ?? 'medium'),
+                  ),
+                  const SizedBox(height: 16),
+                  // Scheduled Date
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkCard,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.darkBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            color: AppColors.textMuted,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            selectedDate != null
+                                ? '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
+                                : 'Select Scheduled Date',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (titleCtrl.text.isNotEmpty &&
+                            selectedProject != null) {
+                          ref
+                              .read(tasksProvider.notifier)
+                              .updateTask(task.id, {
+                                'title': titleCtrl.text,
+                                'description': descCtrl.text,
+                                'project': selectedProject,
+                                'priority': selectedPriority,
+                                if (selectedDate != null)
+                                  'scheduledAt': selectedDate!
+                                      .toIso8601String(),
+                              })
+                              .then((_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Task updated successfully',
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              });
+                          Navigator.pop(ctx);
+                        }
+                      },
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

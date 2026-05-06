@@ -6,12 +6,16 @@ import 'data/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/shell/main_shell.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 /// Global SharedPreferences instance to avoid repeated async calls
 late final SharedPreferences sharedPrefs;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Initialize SharedPreferences ONCE before app starts
   sharedPrefs = await SharedPreferences.getInstance();
@@ -54,8 +58,6 @@ class _AuthGateState extends ConsumerState<AuthGate> {
     }
 
     if (authState.status == AuthStatus.authenticated) {
-      // NOTE: Uncomment after running `flutterfire configure` and initializing Firebase
-      // ref.read(notificationServiceProvider).initialize();
       return const MainShell();
     }
 
